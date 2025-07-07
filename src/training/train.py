@@ -137,7 +137,7 @@ def main():
                 torch.save(state_to_save, save_path)
                 print(f"\n✅ Checkpoint saved to {save_path}")
 
-    print("\n--- Training Complete ---")
+    print("\n--- Training Complete final---")
     if accelerator.is_main_process and wandb.run:
         wandb.finish()
 
