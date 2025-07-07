@@ -1,9 +1,7 @@
-# Core ML/DL
-# We will install torch separately in Colab to ensure GPU compatibility,
-# but it's good to list it for reference.
-# torch
-# torchvision
-# torchaudio
+# Core ML/DL - Pinned for reproducibility
+torch==2.1.0
+torchvision==0.16.0
+torchaudio==2.1.0
 diffusers==0.21.4
 transformers==4.35.2
 accelerate==0.24.1
