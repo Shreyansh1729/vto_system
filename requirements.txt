@@ -6,7 +6,7 @@ transformers==4.35.2
 huggingface_hub==0.19.4
 xformers==0.0.23.post1
 opencv-python-headless==4.8.0.74
-Pillow==11.2.0
+Pillow==11.2.1
 scikit-image==0.19.3
 numpy==1.26.4
 pandas==2.0.3
