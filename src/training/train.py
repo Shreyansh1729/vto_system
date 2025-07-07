@@ -1,8 +1,12 @@
 import argparse
 import os
 import torch
+from torch.utils.data import DataLoader
 import wandb
 from datetime import datetime
+
+# Import our custom Dataset class
+from src.data_preprocessing.viton_hd_dataset import VitonHDDataset
 
 def parse_args():
     """Parses command-line arguments."""
@@ -11,8 +15,9 @@ def parse_args():
         "--data_dir",
         type=str,
         required=True,
-        help="Path to the root data directory on Google Drive.",
+        help="Path to the root data directory (e.g., /content/dataset_unzipped/).",
     )
+    # ... (rest of the arguments are the same)
     parser.add_argument(
         "--epochs", type=int, default=50, help="Number of training epochs."
     )
@@ -32,20 +37,20 @@ def main():
     args = parse_args()
 
     print("--- VTO Training Script Initialized ---")
-    print(f"Arguments: {args}")
 
     # --- 1. Setup Environment and Paths ---
-    # Create a unique run ID for this training session
     run_id = f"vto_run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    print(f"Run ID: {run_id}")
-
-    # Define paths based on the root data directory
-    dataset_path = os.path.join(args.data_dir, "preprocessed_data")
-    checkpoints_path = os.path.join(args.data_dir, "checkpoints", run_id)
+    # NOTE: We now expect data_dir to be the parent of the 'test' folder.
+    test_data_dir = os.path.join(args.data_dir, 'test')
     
-    # Create a directory to save checkpoints for this specific run
+    # Check if the test data directory exists
+    if not os.path.isdir(test_data_dir):
+        raise FileNotFoundError(f"Test data directory not found at {test_data_dir}. Check your --data_dir path.")
+        
+    checkpoints_path = os.path.join("/content/drive/MyDrive/VTO_Project_Data/checkpoints", run_id)
     os.makedirs(checkpoints_path, exist_ok=True)
-    print(f"Dataset path: {dataset_path}")
+    print(f"Run ID: {run_id}")
+    print(f"Loading data from: {test_data_dir}")
     print(f"Checkpoints will be saved to: {checkpoints_path}")
 
     # --- 2. Initialize Weights & Biases (W&B) ---
@@ -55,10 +60,19 @@ def main():
     except Exception as e:
         print(f"Could not initialize W&B: {e}. Training will proceed without logging.")
 
-    # --- 3. Dataloading (Placeholder) ---
+    # --- 3. Dataloading ---
     print("\n--- Phase: Dataloading ---")
-    # TODO: Implement dataset and dataloader
-    print("Dataloader placeholder.")
+    
+    # Instantiate the dataset
+    # We are using a smaller image size for faster training on free GPUs
+    dataset = VitonHDDataset(data_dir=test_data_dir, pairs_file='test_pairs.txt', image_size=(512, 384))
+    
+    # Create the DataLoader
+    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=2)
+    
+    print(f"Successfully loaded {len(dataset)} samples.")
+    print(f"Dataloader created with batch size {args.batch_size}.")
+
 
     # --- 4. Model, Optimizer, and Scheduler Setup (Placeholder) ---
     print("\n--- Phase: Model Setup ---")
@@ -72,8 +86,22 @@ def main():
     print("\n--- Phase: Training ---")
     for epoch in range(args.epochs):
         print(f"\n--- Epoch {epoch+1}/{args.epochs} ---")
-        # TODO: Implement the training logic for one epoch
         
+        # Loop over the batches of data
+        for i, batch in enumerate(dataloader):
+            # Move data to the GPU
+            person_images = batch['person_image'].to(device)
+            cloth_images = batch['cloth_image'].to(device)
+            pose_maps = batch['pose_map'].to(device)
+            
+            # This is where the model would process the batch
+            # For now, we'll just print the shape of the first batch
+            if i == 0:
+                print(f"  Batch {i+1}:")
+                print(f"    Person image batch shape: {person_images.shape}")
+                print(f"    Cloth image batch shape: {cloth_images.shape}")
+                print(f"    Pose map batch shape: {pose_maps.shape}")
+
         # Dummy loss for demonstration
         loss = 1.0 / (epoch + 1) 
         print(f"Epoch {epoch+1}: Dummy Loss = {loss:.4f}")
@@ -83,10 +111,8 @@ def main():
             wandb.log({"epoch": epoch + 1, "loss": loss})
 
         # --- 6. Save Checkpoint ---
-        if (epoch + 1) % 5 == 0: # Save every 5 epochs
+        if (epoch + 1) % 5 == 0: 
             checkpoint_file = os.path.join(checkpoints_path, f"epoch_{epoch+1}.pth")
-            # TODO: Add model state_dict to save
-            # torch.save(model.state_dict(), checkpoint_file)
             print(f"Checkpoint placeholder: Would save to {checkpoint_file}")
 
     print("\n--- Training Complete ---")
