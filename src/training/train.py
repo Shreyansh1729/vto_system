@@ -2,121 +2,112 @@ import argparse
 import os
 import torch
 from torch.utils.data import DataLoader
+from accelerate import Accelerator
 import wandb
 from datetime import datetime
+from tqdm.auto import tqdm
 
-# Import our custom Dataset class
+# Import our custom classes
 from src.data_preprocessing.viton_hd_dataset import VitonHDDataset
+from src.model.tryon_model import VTOModel
 
 def parse_args():
     """Parses command-line arguments."""
     parser = argparse.ArgumentParser(description="Train a Virtual Try-On model.")
-    parser.add_argument(
-        "--data_dir",
-        type=str,
-        required=True,
-        help="Path to the root data directory (e.g., /content/dataset_unzipped/).",
-    )
-    # ... (rest of the arguments are the same)
-    parser.add_argument(
-        "--epochs", type=int, default=50, help="Number of training epochs."
-    )
-    parser.add_argument(
-        "--batch_size", type=int, default=4, help="Batch size for training."
-    )
-    parser.add_argument(
-        "--learning_rate", type=float, default=1e-5, help="Learning rate for the optimizer."
-    )
-    parser.add_argument(
-        "--wandb_project", type=str, default="vto-system", help="Weights & Biases project name."
-    )
+    parser.add_argument("--data_dir", type=str, required=True, help="Path to the root data directory.")
+    parser.add_argument("--epochs", type=int, default=10, help="Number of training epochs.")
+    parser.add_argument("--batch_size", type=int, default=1, help="Batch size for training. Use 1 for limited VRAM.")
+    parser.add_argument("--learning_rate", type=float, default=1e-5, help="Learning rate for the optimizer.")
+    parser.add_argument("--wandb_project", type=str, default="vto-system", help="Weights & Biases project name.")
+    parser.add_argument("--gdrive_checkpoints_dir", type=str, required=True, help="Path to Google Drive checkpoints folder.")
     return parser.parse_args()
 
 def main():
     """Main training script."""
     args = parse_args()
 
-    print("--- VTO Training Script Initialized ---")
-
     # --- 1. Setup Environment and Paths ---
+    # Use Accelerator for easier mixed-precision and device handling
+    accelerator = Accelerator(mixed_precision="fp16")
+    device = accelerator.device
+
     run_id = f"vto_run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    # NOTE: We now expect data_dir to be the parent of the 'test' folder.
     test_data_dir = os.path.join(args.data_dir, 'test')
     
-    # Check if the test data directory exists
     if not os.path.isdir(test_data_dir):
-        raise FileNotFoundError(f"Test data directory not found at {test_data_dir}. Check your --data_dir path.")
+        raise FileNotFoundError(f"Test data directory not found at {test_data_dir}.")
         
-    checkpoints_path = os.path.join("/content/drive/MyDrive/VTO_Project_Data/checkpoints", run_id)
+    checkpoints_path = os.path.join(args.gdrive_checkpoints_dir, run_id)
     os.makedirs(checkpoints_path, exist_ok=True)
+    
+    print(f"--- VTO Training Initialized on {device} ---")
     print(f"Run ID: {run_id}")
-    print(f"Loading data from: {test_data_dir}")
     print(f"Checkpoints will be saved to: {checkpoints_path}")
 
     # --- 2. Initialize Weights & Biases (W&B) ---
-    try:
-        wandb.init(project=args.wandb_project, name=run_id, config=args)
-        print("Weights & Biases initialized successfully.")
-    except Exception as e:
-        print(f"Could not initialize W&B: {e}. Training will proceed without logging.")
+    if accelerator.is_main_process:
+        try:
+            wandb.init(project=args.wandb_project, name=run_id, config=args)
+            print("Weights & Biases initialized successfully.")
+        except Exception as e:
+            print(f"Could not initialize W&B: {e}.")
 
     # --- 3. Dataloading ---
-    print("\n--- Phase: Dataloading ---")
-    
-    # Instantiate the dataset
-    # We are using a smaller image size for faster training on free GPUs
     dataset = VitonHDDataset(data_dir=test_data_dir, pairs_file='test_pairs.txt', image_size=(512, 384))
-    
-    # Create the DataLoader
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=2)
-    
     print(f"Successfully loaded {len(dataset)} samples.")
-    print(f"Dataloader created with batch size {args.batch_size}.")
 
+    # --- 4. Model, Optimizer, and Scheduler Setup ---
+    print("Loading VTOModel...")
+    model = VTOModel()
+    
+    # We are only training the ControlNet parameters
+    trainable_params = list(model.controlnet_pose.parameters()) + list(model.controlnet_cloth.parameters())
+    optimizer = torch.optim.AdamW(trainable_params, lr=args.learning_rate)
 
-    # --- 4. Model, Optimizer, and Scheduler Setup (Placeholder) ---
-    print("\n--- Phase: Model Setup ---")
-    # TODO: Load diffusion model, ControlNets, and set up optimizer
-    print("Model setup placeholder.")
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"Using device: {device}")
+    # Prepare everything with accelerator
+    model, optimizer, dataloader = accelerator.prepare(model, optimizer, dataloader)
+    print("Model, optimizer, and dataloader prepared with Accelerator.")
 
 
     # --- 5. Training Loop ---
-    print("\n--- Phase: Training ---")
+    print("\n--- Starting Training ---")
+    progress_bar = tqdm(range(args.epochs * len(dataloader)), disable=not accelerator.is_main_process)
+    
     for epoch in range(args.epochs):
-        print(f"\n--- Epoch {epoch+1}/{args.epochs} ---")
-        
-        # Loop over the batches of data
-        for i, batch in enumerate(dataloader):
-            # Move data to the GPU
-            person_images = batch['person_image'].to(device)
-            cloth_images = batch['cloth_image'].to(device)
-            pose_maps = batch['pose_map'].to(device)
+        model.train()
+        for step, batch in enumerate(dataloader):
+            # The model's forward pass calculates the loss internally
+            loss = model(batch)
             
-            # This is where the model would process the batch
-            # For now, we'll just print the shape of the first batch
-            if i == 0:
-                print(f"  Batch {i+1}:")
-                print(f"    Person image batch shape: {person_images.shape}")
-                print(f"    Cloth image batch shape: {cloth_images.shape}")
-                print(f"    Pose map batch shape: {pose_maps.shape}")
+            accelerator.backward(loss)
+            optimizer.step()
+            optimizer.zero_grad()
 
-        # Dummy loss for demonstration
-        loss = 1.0 / (epoch + 1) 
-        print(f"Epoch {epoch+1}: Dummy Loss = {loss:.4f}")
-
-        # Log metrics to W&B
-        if wandb.run:
-            wandb.log({"epoch": epoch + 1, "loss": loss})
-
+            # Logging
+            if accelerator.is_main_process:
+                progress_bar.update(1)
+                progress_bar.set_description(f"Epoch {epoch+1} | Loss: {loss.item():.4f}")
+                wandb.log({"loss": loss.item()})
+        
         # --- 6. Save Checkpoint ---
-        if (epoch + 1) % 5 == 0: 
-            checkpoint_file = os.path.join(checkpoints_path, f"epoch_{epoch+1}.pth")
-            print(f"Checkpoint placeholder: Would save to {checkpoint_file}")
+        if accelerator.is_main_process:
+            if (epoch + 1) % 2 == 0: # Save every 2 epochs
+                save_path = os.path.join(checkpoints_path, f"epoch_{epoch+1}.pth")
+                
+                # Unwrap the model to save the raw state dict
+                unwrapped_model = accelerator.unwrap_model(model)
+                
+                # We only need to save the trainable parts (the ControlNets)
+                state_to_save = {
+                    'controlnet_pose': unwrapped_model.controlnet_pose.state_dict(),
+                    'controlnet_cloth': unwrapped_model.controlnet_cloth.state_dict(),
+                }
+                torch.save(state_to_save, save_path)
+                print(f"\n✅ Checkpoint saved to {save_path}")
 
     print("\n--- Training Complete ---")
-    if wandb.run:
+    if accelerator.is_main_process and wandb.run:
         wandb.finish()
 
 if __name__ == "__main__":
