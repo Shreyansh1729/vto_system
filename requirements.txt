@@ -1,0 +1,14 @@
+# Core
+numpy
+pandas
+Pillow
+opencv-python-headless
+matplotlib
+
+# MLOps & Deployment
+wandb
+gradio
+huggingface_hub
+
+# Utilities
+tqdm
