@@ -44,7 +44,6 @@ def parse_args():
         default="vto-system", 
         help="Weights & Biases project name."
     )
-    # THIS IS THE NEW LINE TO ADD:
     parser.add_argument(
         "--gdrive_checkpoints_dir", 
         type=str, 
@@ -119,7 +118,8 @@ def main():
             if accelerator.is_main_process:
                 progress_bar.update(1)
                 progress_bar.set_description(f"Epoch {epoch+1} | Loss: {loss.item():.4f}")
-                wandb.log({"loss": loss.item()})
+                if wandb.run:
+                    wandb.log({"loss": loss.item()})
         
         # --- 6. Save Checkpoint ---
         if accelerator.is_main_process:
