@@ -1,24 +1,16 @@
-# Core ML/DL - Pinned for reproducibility
-torch==2.1.0
-torchvision==0.16.0
-torchaudio==2.1.0
-diffusers==0.21.4
+torch==2.1.2
+torchvision==0.16.2
+accelerate==0.25.0
+diffusers==0.24.0
 transformers==4.35.2
-accelerate==0.24.1
-xformers==0.0.22.post7
-
-# Computer Vision
-opencv-python-headless
-Pillow
-scikit-image
-
-# Data & Utilities
+huggingface_hub==0.19.4
+xformers==0.0.23.post1
+opencv-python-headless==4.8.0.74
+Pillow==11.2.0
+scikit-image==0.19.3
 numpy==1.26.4
-pandas
-tqdm
-matplotlib
-
-# MLOps & Deployment
-wandb
-gradio
-huggingface_hub
+pandas==2.0.3
+tqdm==4.66.1
+matplotlib==3.8.0
+wandb==0.15.10
+gradio==3.40.1
