@@ -14,12 +14,43 @@ from src.model.tryon_model import VTOModel
 def parse_args():
     """Parses command-line arguments."""
     parser = argparse.ArgumentParser(description="Train a Virtual Try-On model.")
-    parser.add_argument("--data_dir", type=str, required=True, help="Path to the root data directory.")
-    parser.add_argument("--epochs", type=int, default=10, help="Number of training epochs.")
-    parser.add_argument("--batch_size", type=int, default=1, help="Batch size for training. Use 1 for limited VRAM.")
-    parser.add_argument("--learning_rate", type=float, default=1e-5, help="Learning rate for the optimizer.")
-    parser.add_argument("--wandb_project", type=str, default="vto-system", help="Weights & Biases project name.")
-    parser.add_argument("--gdrive_checkpoints_dir", type=str, required=True, help="Path to Google Drive checkpoints folder.")
+    parser.add_argument(
+        "--data_dir", 
+        type=str, 
+        required=True, 
+        help="Path to the root data directory."
+    )
+    parser.add_argument(
+        "--epochs", 
+        type=int, 
+        default=10, 
+        help="Number of training epochs."
+    )
+    parser.add_argument(
+        "--batch_size", 
+        type=int, 
+        default=1, 
+        help="Batch size for training. Use 1 for limited VRAM."
+    )
+    parser.add_argument(
+        "--learning_rate", 
+        type=float, 
+        default=1e-5, 
+        help="Learning rate for the optimizer."
+    )
+    parser.add_argument(
+        "--wandb_project", 
+        type=str, 
+        default="vto-system", 
+        help="Weights & Biases project name."
+    )
+    # THIS IS THE NEW LINE TO ADD:
+    parser.add_argument(
+        "--gdrive_checkpoints_dir", 
+        type=str, 
+        required=True, 
+        help="Path to Google Drive folder for saving checkpoints."
+    )
     return parser.parse_args()
 
 def main():
