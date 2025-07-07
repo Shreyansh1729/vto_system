@@ -13,7 +13,6 @@ Pillow
 scikit-image
 
 # Data & Utilities
-# Data & Utilities
 numpy==1.26.4
 pandas
 tqdm
