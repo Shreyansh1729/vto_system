@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from diffusers import DDPMScheduler, UNet2DConditionModel, VaeImageProcessor, AutoencoderKL
+from diffusers import DDPMScheduler, UNet2DConditionModel, AutoencoderKL
 from transformers import CLIPVisionModelWithProjection
 from diffusers.models.controlnet import ControlNetModel
 
@@ -47,7 +47,7 @@ class VTOModel(nn.Module):
         # --- 3. Set up other necessary components ---
         self.noise_scheduler = DDPMScheduler.from_pretrained(model_id, subfolder="scheduler")
         self.vae_scale_factor = 2 ** (len(self.vae.config.block_out_channels) - 1)
-        self.image_processor = VaeImageProcessor(vae_scale_factor=self.vae_scale_factor)
+        
 
     def forward(self, batch):
         """
