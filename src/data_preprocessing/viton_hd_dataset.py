@@ -10,7 +10,7 @@ class VitonHDDataset(Dataset):
     Custom PyTorch Dataset for loading the VITON-HD dataset.
     """
     # UPDATED __init__ function
-    def __init__(self, data_dir, pairs_file_path, image_size=(512, 384)):
+    def __init__(self, data_dir, pairs_file_path, image_size=(512, 384), clip_image_size=(224, 224)):
         """
         Args:
             data_dir (str): The root directory for image folders (e.g., '.../test').
