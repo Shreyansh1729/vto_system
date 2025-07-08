@@ -25,7 +25,7 @@ def parse_args():
 def main():
     """Main training script."""
     args = parse_args()
-    accelerator = Accelerator(mixed_precision="fp16")
+    accelerator = Accelerator()
     device = accelerator.device
     run_id = f"vto_run_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     
