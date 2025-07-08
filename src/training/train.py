@@ -64,7 +64,7 @@ def main():
     trainable_params = list(model.controlnet_pose.parameters()) + list(model.controlnet_cloth.parameters())
     optimizer = bnb.optim.AdamW8bit(trainable_params, lr=args.learning_rate)
     
-    model, optimizer, dataloader = accelerator.prepare(model, optimizer, dataloaloader)
+    model, optimizer, dataloader = accelerator.prepare(model, optimizer, dataloader)
     print("Model, optimizer, and dataloader prepared with Accelerator.")
 
     # --- 5. Training Loop (UPDATED FOR GRADIENT ACCUMULATION) ---
