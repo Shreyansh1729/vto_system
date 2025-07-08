@@ -10,6 +10,8 @@ class VTOModel(nn.Module):
     The main Virtual Try-On model. It orchestrates the VAE, Garment Encoder,
     ControlNets, and the main UNet to generate a try-on image.
     """
+    # In src/model/tryon_model.py
+
     def __init__(
         self,
         model_id: str = "runwayml/stable-diffusion-v1-5",
@@ -19,35 +21,27 @@ class VTOModel(nn.Module):
         super().__init__()
 
         # --- 1. Load Pre-trained Components ---
-        
-        # Main UNet for diffusion
         self.unet = UNet2DConditionModel.from_pretrained(model_id, subfolder="unet")
-
-        # VAE for encoding/decoding images to/from latent space
         self.vae = AutoencoderKL.from_pretrained(model_id, subfolder="vae")
-        
-        # Garment encoder (CLIP Vision Model)
         self.image_encoder = CLIPVisionModelWithProjection.from_pretrained(clip_model_id)
-        
-        # ControlNets for pose and canny edge guidance
         self.controlnet_pose = ControlNetModel.from_pretrained(controlnet_pose_id)
-        # We will create a second ControlNet for the cloth, initialized with the same weights
-        # It will learn to extract garment shape information
         self.controlnet_cloth = ControlNetModel.from_pretrained(controlnet_pose_id)
+
+        # --- THIS IS THE NEW LINE TO ADD ---
+        # Disable xformers for compatibility with older GPUs like T4
+        self.unet.disable_xformers_memory_efficient_attention()
+        # ------------------------------------
 
         # --- 2. Freeze Components that we don't want to train initially ---
         self.vae.requires_grad_(False)
         self.image_encoder.requires_grad_(False)
-        self.unet.requires_grad_(False) # We will only train the ControlNets at first
-        
-        # Only the ControlNets will be trained
+        self.unet.requires_grad_(False)
         self.controlnet_pose.train()
         self.controlnet_cloth.train()
 
         # --- 3. Set up other necessary components ---
         self.noise_scheduler = DDPMScheduler.from_pretrained(model_id, subfolder="scheduler")
         self.vae_scale_factor = 2 ** (len(self.vae.config.block_out_channels) - 1)
-        
 
     def forward(self, batch):
         """
