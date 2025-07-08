@@ -56,13 +56,13 @@ class VTOModel(nn.Module):
         """
         # --- 1. Unpack and Prepare Inputs ---
         target_images = batch['target_image']  # The ground truth person image
-        cloth_images = batch['cloth_image']
+        clip_cloth_images = batch['clip_cloth_image'] # Use the new correctly-sized image
         pose_maps = batch['pose_map']
 
         # The 'cloth canny' will be the same as the pose map for now
         # In a more advanced version, we'd generate a canny edge map of the cloth
         cloth_canny_maps = pose_maps # Placeholder, but a valid starting point
-
+        
         # --- 2. Encode Inputs ---
         
         # Encode target images into latents
@@ -70,7 +70,7 @@ class VTOModel(nn.Module):
         
         # Encode garment images using the CLIP encoder
         # The output shape will be (batch_size, 1, 768) for SDv1.5
-        garment_embeds = self.image_encoder(cloth_images).image_embeds.unsqueeze(1)
+        garment_embeds = self.image_encoder(clip_cloth_images).image_embeds.unsqueeze(1)
         
         # --- 3. Diffusion Process ---
         

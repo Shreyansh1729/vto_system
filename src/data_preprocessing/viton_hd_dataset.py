@@ -20,7 +20,7 @@ class VitonHDDataset(Dataset):
         self.data_dir = data_dir
         self.image_size = image_size
         self.pairs_path = pairs_file_path # Use the direct path now
-
+        self.clip_image_size = clip_image_size # Add CLIP specific size
         self.data_pairs = self._load_pairs()
 
         self.transform = transforms.Compose([
@@ -33,6 +33,14 @@ class VitonHDDataset(Dataset):
             transforms.Resize(self.image_size, interpolation=transforms.InterpolationMode.NEAREST),
             transforms.ToTensor()
         ])
+
+        self.clip_transform = transforms.Compose([
+            transforms.Resize(self.clip_image_size, interpolation=transforms.InterpolationMode.BILINEAR),
+            transforms.ToTensor(),
+            # This is the normalization CLIP was trained with
+            transforms.Normalize([0.48145466, 0.4578275, 0.40821073], [0.26862954, 0.26130258, 0.27577711])
+        ])
+
 
     def _load_pairs(self):
         """Loads the person-garment pairs from the provided text file."""
@@ -67,17 +75,18 @@ class VitonHDDataset(Dataset):
         parse_map = Image.open(parse_img_path).convert('L')
 
         person_image_tensor = self.transform(person_image)
-        cloth_image_tensor = self.transform(cloth_image)
+        #cloth_image_tensor = self.transform(cloth_image)
         pose_map_tensor = self.transform(pose_map)
         parse_map_tensor = self.map_transform(parse_map)
-
+        clip_cloth_image_tensor = self.clip_transform(cloth_image)
         target_image_tensor = person_image_tensor
 
         return {
             'person_image': person_image_tensor,
-            'cloth_image': cloth_image_tensor,
+            #'cloth_image': cloth_image_tensor,
             'pose_map': pose_map_tensor,
             'parse_map': parse_map_tensor,
+            'clip_cloth_image': clip_cloth_image_tensor, # New key for CLIP
             'target_image': target_image_tensor,
             'person_filename': person_fn
         }
